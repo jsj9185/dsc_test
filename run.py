@@ -3,6 +3,7 @@ import logging
 import os
 import pandas as pd
 import torch, gc
+from datetime import datetime
 import argparse
 import matplotlib.pyplot as plt
 from financerag.rerank import CrossEncoderReranker
@@ -14,7 +15,6 @@ parser = argparse.ArgumentParser(description='args')
 parser.add_argument('--encoding_batch_size', type=int, default=8)
 parser.add_argument('--rerank1_batch_size', type=int, default=32)
 parser.add_argument('--rerank2_batch_size', type=int, default=8)
-parser.add_argument('--time', type=int, default=10, help='훈련 에폭 수')
 args = parser.parse_args()
 
 ###################################################################################
@@ -143,11 +143,11 @@ base_reranker = "BAAI/bge-reranker-v2-m3" #"BAAI/bge-reranker-base" #m2
 reranker = CrossEncoderReranker(
     model=CrossEncoder(base_reranker))
 ###################################################################################
-# Step 6: Perform rerankin
-top_k= 100 # Number of Reranking results
-batch_size = 8 # 32
+# Step 6: Perform reranking 1
+batch_size = args.rerank1_batch_size # 32
 
 print("\nWorking on ConvFinQA Reranking")
+top_k = 0.6*len(convfinqa_task.retrieve_results)
 convfinqa_rerank = convfinqa_task.rerank(
     reranker=reranker,
     results=convfinqa_result,
@@ -156,6 +156,7 @@ convfinqa_rerank = convfinqa_task.rerank(
 )
 torch.cuda.empty_cache()
 print("\nWorking on FinBench Reranking")
+top_k = 0.8*len(finbench_task.retrieve_results)
 finbench_rerank = finbench_task.rerank(
     reranker=reranker,
     results=finbench_result,
@@ -164,6 +165,7 @@ finbench_rerank = finbench_task.rerank(
 )
 torch.cuda.empty_cache()
 print("\nWorking on FinDER Reranking")
+top_k = 0.4*len(finder_task.retrieve_results)
 finder_rerank = finder_task.rerank(
     reranker=reranker,
     results=finder_result,
@@ -172,6 +174,7 @@ finder_rerank = finder_task.rerank(
 )
 torch.cuda.empty_cache()
 print("\nWorking on FinQA Reranking")
+top_k = 0.6*len(finqa_task.retrieve_results)
 finqa_rerank = finqa_task.rerank(
     reranker=reranker,
     results=finqa_result,
@@ -180,6 +183,7 @@ finqa_rerank = finqa_task.rerank(
 )
 torch.cuda.empty_cache()
 print("\nWorking on FinQABench Reranking")
+top_k = 0.8*len(finqabench_task.retrieve_results)
 finqabench_rerank = finqabench_task.rerank(
     reranker=reranker,
     results=finqabench_result,
@@ -188,6 +192,7 @@ finqabench_rerank = finqabench_task.rerank(
 )
 torch.cuda.empty_cache()
 print("\nWorking on MultiHiertt Reranking")
+top_k = 0.4*len(multih_task.retrieve_results)
 multih_rerank = multih_task.rerank(
     reranker=reranker,
     results=multih_result,
@@ -196,6 +201,7 @@ multih_rerank = multih_task.rerank(
 )
 torch.cuda.empty_cache()
 print("\nWorking on TATQA Reranking")
+top_k = 0.6*len(tatqa_task.retrieve_results)
 tatqa_rerank = tatqa_task.rerank(
     reranker=reranker,
     results=tatqa_result,
@@ -274,7 +280,7 @@ reranker2 = CrossEncoderReranker(
 # Step 6: Perform reranking
 
 top_k= 20 # Number of Reranking results
-batch_size = 8 # 32
+batch_size = args.rerank2_batch_size # 32
 
 print("\nWorking on ConvFinQA Reranking")
 convfinqa_rerank_second = convfinqa_task.rerank(

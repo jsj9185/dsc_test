@@ -2,6 +2,7 @@ import csv
 import json
 import logging
 import os
+import pandas as pd
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 import pytrec_eval
@@ -84,7 +85,7 @@ class BaseTask:
             `ValueError`:
                 If the dataset cannot be loaded from the specified path and subset.
         """
-        print('Ok')
+        #print('Ok')
         if (self.corpus is None) or (self.queries is None):
         #     dataset_path = self.metadata_dict["dataset"]["path"]
         #     subset = self.metadata_dict["dataset"]["subset"]
@@ -142,13 +143,13 @@ class BaseTask:
         if (self.corpus is None) or (self.queries is None):
             raise ValueError("Data has not been loaded.")
         
-        top_k = 20000
-        # if len(self.corpus)>10000:
-        #     top_k = 5000
-        # elif len(self.corpus)>2000:
-        #     top_k = int(0.8*len(self.corpus))
-        # elif len(self.corpus)>10:
-        #     top_k = int(0.8*len(self.corpus))
+        #top_k = 20000
+        if len(self.corpus)>10000:
+            top_k = 3000
+        elif len(self.corpus)>2000:
+            top_k = int(0.6*len(self.corpus))
+        elif len(self.corpus)>10:
+            top_k = int(0.8*len(self.corpus))
         self.retrieve_results = retriever.retrieve(
             queries=self.queries, corpus=self.corpus, top_k=top_k, **kwargs
         )
@@ -322,6 +323,32 @@ class BaseTask:
         logger.info("Successfully prepared generation inputs for all queries.")
         return messages_dict
 
+    def load_results(self, top_k = 10) -> pd.DataFrame:
+        """
+        Returns the results as a DataFrame from the rerank or retrieval results.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the top results.
+        """
+        # Ensure rerank_results is used if available, otherwise use retrieval results
+        final_result = self.rerank_results if self.rerank_results is not None else self.retrieve_results
+
+        if final_result is None:
+            raise ValueError("No results to load.")
+
+        # Create a DataFrame from the final result
+        data = []
+        for q_id, doc_scores in final_result.items():
+            # Sort doc_scores by score and create a row for each (query_id, corpus_id)
+            sorted_docs = sorted(doc_scores.items(), key=lambda item: item[1], reverse=True)[:top_k]
+            for doc_id, score in sorted_docs:
+                data.append([q_id, doc_id, score])
+
+        # Create a DataFrame with the columns
+        df = pd.DataFrame(data, columns=["query_id", "corpus_id", "score"])
+
+        return df
+
     def save_results(
         self, top_k: int = 10, output_dir: Optional[str] = None) -> None:
         """
@@ -436,6 +463,7 @@ class BaseTask:
         evaluator = pytrec_eval.RelevanceEvaluator(qrels,
                                                    {map_string, ndcg_string, recall_string, precision_string})
         scores = evaluator.evaluate(filtered_results)
+        print(len(scores))
 
         # Aggregate the scores for each query and each k
         for query_id in scores.keys():
