@@ -62,7 +62,7 @@ class BaseTask:
         self.retrieve_results: Optional[Dict] = None
         self.rerank_results: Optional[Dict] = None
         self.generate_results: Optional[Dict] = None
-
+        #self.top_k: int = None
         self.load_data()
 
     @property
@@ -141,8 +141,14 @@ class BaseTask:
 
         if (self.corpus is None) or (self.queries is None):
             raise ValueError("Data has not been loaded.")
-
-        #top_k = min(300, 0.1*len(self.corpus))
+        
+        top_k = 20000
+        # if len(self.corpus)>10000:
+        #     top_k = 5000
+        # elif len(self.corpus)>2000:
+        #     top_k = int(0.8*len(self.corpus))
+        # elif len(self.corpus)>10:
+        #     top_k = int(0.8*len(self.corpus))
         self.retrieve_results = retriever.retrieve(
             queries=self.queries, corpus=self.corpus, top_k=top_k, **kwargs
         )
@@ -316,7 +322,8 @@ class BaseTask:
         logger.info("Successfully prepared generation inputs for all queries.")
         return messages_dict
 
-    def save_results(self, top_k: int = 10, output_dir: Optional[str] = None) -> None:
+    def save_results(
+        self, top_k: int = 10, output_dir: Optional[str] = None) -> None:
         """
         Saves the top retrieval or reranking, and generated results to CSV and JSONL files.
 
@@ -346,8 +353,6 @@ class BaseTask:
         # Determine whether to use rerank results or retrieve results
         final_result = (
             self.rerank_results
-            if self.rerank_results is not None
-            else self.retrieve_results
         )
 
         # Process the final result if it's not None
@@ -368,8 +373,9 @@ class BaseTask:
                     # Write the query_id and corpus_id to the CSV
                     for doc_id, _ in sorted_docs:
                         writer.writerow([q_id, doc_id])
-
             #logger.info(f"Top {top_k} results saved successfully to {csv_file_path}")
+        else:
+            logger.info("Save Failed")
 
         # Save generate_results to JSON Lines format
         if self.generate_results is not None:

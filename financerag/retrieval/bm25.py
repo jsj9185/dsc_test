@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Callable, Dict, List, Literal, Optional
-
+from rank_bm25 import BM25Okapi
 import numpy as np
 from nltk.tokenize import word_tokenize
 
@@ -34,7 +34,7 @@ class BM25Retriever(Retrieval):
         - retrieve: Searches for relevant documents based on the given queries, returning the top-k results.
     """
 
-    def __init__(self, model: Lexical, tokenizer: Callable[[List[str]], List[List[str]]] = tokenize_list):
+    def __init__(self, tokenizer: Callable[[List[str]], List[List[str]]] = tokenize_list):
         """
         Initializes the `BM25Retriever` class with a lexical model and a tokenizer function.
 
@@ -44,7 +44,7 @@ class BM25Retriever(Retrieval):
             tokenizer (`Callable[[List[str]], List[List[str]]]`, *optional*):
                 A function that tokenizes the input queries. Defaults to `tokenize_list`, which uses `nltk.word_tokenize`.
         """
-        self.model: Lexical = model
+        #self.model: Lexical = model
         self.tokenizer: Callable[[List[str]], List[List[str]]] = tokenizer
         self.results: Optional[Dict[str, Any]] = {}
 
@@ -79,16 +79,18 @@ class BM25Retriever(Retrieval):
             `Dict[str, Dict[str, float]]`:
                 A dictionary where each key is a query ID, and the value is another dictionary mapping document IDs to relevance scores.
         """
+        corpus_ids = list(corpus.keys())
+        corpus_texts = [corpus[doc_id]['text'].lower() for doc_id in corpus_ids]
+        tokenized_corpus = tokenize_list(corpus_texts)
+        bm25_model = BM25Okapi(tokenized_corpus)
+
         query_ids = list(queries.keys())
         self.results = {qid: {} for qid in query_ids}
-
         logger.info("Tokenizing queries with lower cases")
         query_lower_tokens = self.tokenizer([queries[qid].lower() for qid in queries])
 
-        corpus_ids = list(corpus.keys())
-
         for qid, query in zip(query_ids, query_lower_tokens):
-            scores = self.model.get_scores(query)
+            scores = bm25_model.get_scores(query)
             top_k_result = np.argsort(scores)[::-1][:top_k]
             for idx in top_k_result:
                 self.results[qid][corpus_ids[idx]] = scores[idx]

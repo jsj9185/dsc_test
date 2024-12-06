@@ -85,7 +85,7 @@ class DenseRetrieval(Retrieval):
     def __init__(
             self,
             model: Encoder,
-            batch_size: int = 64,
+            batch_size: int = 8, # Batchsize!
             score_functions: Dict[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] | None = None,
             corpus_chunk_size: int = 50000
     ):
@@ -105,6 +105,7 @@ class DenseRetrieval(Retrieval):
         """
         self.model: Encoder = model
         self.batch_size: int = batch_size
+        print(f'batch size: {batch_size}') 
         if score_functions is None:
             score_functions = {"cos_sim": cos_sim, "dot": dot_score}
         self.score_functions: Dict[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = score_functions
@@ -158,7 +159,7 @@ class DenseRetrieval(Retrieval):
         query_embeddings = self.model.encode_queries(
             query_texts, batch_size=self.batch_size, **kwargs
         )
-
+        #print('change')
         logger.info("Sorting corpus by document length...")
         sorted_corpus_ids = sorted(
             corpus,
