@@ -113,7 +113,7 @@ class BaseTask:
             }
 
     def retrieve(
-            self, retriever: Retrieval, top_k: Optional[int] = 100, 
+            self, retriever: Retrieval, top_k: Optional[int] = 80, 
             **kwargs) -> Dict[str, Dict[str, float]]:
         """
         Performs document retrieval using the provided retriever model.
@@ -144,12 +144,12 @@ class BaseTask:
             raise ValueError("Data has not been loaded.")
         
         #top_k = 20000
-        if len(self.corpus)>10000:
-            top_k = 3000
-        elif len(self.corpus)>2000:
-            top_k = int(0.6*len(self.corpus))
-        elif len(self.corpus)>10:
-            top_k = int(0.8*len(self.corpus))
+        # if len(self.corpus)>10000:
+        #     top_k = 3000
+        # elif len(self.corpus)>2000:
+        #     top_k = int(0.6*len(self.corpus))
+        # elif len(self.corpus)>10:
+        #     top_k = int(0.8*len(self.corpus))
         self.retrieve_results = retriever.retrieve(
             queries=self.queries, corpus=self.corpus, top_k=top_k, **kwargs
         )
@@ -249,14 +249,16 @@ class BaseTask:
 
         if prepare_messages is None:
             logger.info(
-                "No prepare_messages function provided. "
-                "Using default message preparation function, which selects the highest scored document for each query."
+                "No prepare_messages function provided."
             )
 
             def default_messages(
-                    query: str, documents: List[Tuple[str, float]]
+                    query: str, 
+                    #documents: List[Tuple[str, float]]
+                    documents: List[str]
             ) -> List[Dict]:
-                first_document = max(documents, key=lambda x: x[1])[0]
+                #first_document = max(documents, key=lambda x: x[1])[0]
+                first_document = documents[0]
                 messages = [
                     {"role": "system", "content": "You are a helpful assistant."},
                     {
@@ -273,15 +275,18 @@ class BaseTask:
         if results is None:
             results = (
                 self.rerank_results
-                if self.rerank_results is None
+                if self.rerank_results is not None
                 else self.retrieve_results
             )
+            print(len(results))
             assert results is not None, (
                 "Neither rerank_results nor retrieve_results are available. "
                 "One of them must be provided."
             )
 
         messages_dict = self.prepare_generation_inputs(results, prepare_messages)
+        #print(messages_dict)
+        #print(error)
         self.generate_results = model.generation(messages_dict, **kwargs)
 
         return self.generate_results
@@ -312,10 +317,11 @@ class BaseTask:
 
         messages_dict: Dict[str, List[Dict[str, str]]] = {}
         logger.info("Preparing generation inputs for %d queries.", len(results))
-        for query_id, result in results.items():
+        for query_id, corpus in results.items():
             query = self.queries[query_id]
             documents = [
-                (self.corpus[doc_id], score) for doc_id, score in result.items()
+                #(self.corpus[doc_id], score) for doc_id, score in result.items()
+                self.corpus[corpus_id] for corpus_id, _ in corpus.items()
             ]
             messages = prepare_messages(query, documents)
             messages_dict[query_id] = messages

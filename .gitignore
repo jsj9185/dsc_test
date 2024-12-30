@@ -1,2 +1,4 @@
 financerag/results
 **/__pycache__/
+/data
+/chunk

@@ -87,7 +87,7 @@ class DenseRetrieval(Retrieval):
             model: Encoder,
             batch_size: int = 8, # Batchsize!
             score_functions: Dict[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] | None = None,
-            corpus_chunk_size: int = 50000
+            corpus_chunk_size: int = 50000,
     ):
         """
         Initializes the DenseRetrieval class.
